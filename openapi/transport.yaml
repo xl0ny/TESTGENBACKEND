@@ -1,0 +1,198 @@
+openapi: 3.0.3
+info:
+  title: Транспортный уровень — LLM вариант 8
+  description: |
+    Приём сегментов от агентного уровня, буферизация (Kafka), сборка раз в N секунд,
+    имитация потери сегментов с вероятностью R=8% (номер варианта), таймаут 1–3 цикла → `error=true`.
+    Прикладной бэкенд передаёт запрос пользователя и забирает собранное сообщение.
+  version: 1.0.0
+
+servers:
+  - url: http://localhost:8081
+    description: Локальная разработка
+
+tags:
+  - name: segments
+    description: Сегменты от агента
+  - name: messages
+    description: Сообщения для прикладного уровня
+
+paths:
+  /v1/segments:
+    post:
+      tags: [segments]
+      summary: Передать сегмент сообщения
+      operationId: postSegment
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Segment'
+      responses:
+        '204':
+          description: Сегмент принят (или утерян с вероятностью R% на стороне сервера)
+        '400':
+          description: Некорректное тело запроса
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /v1/messages/send:
+    post:
+      tags: [messages]
+      summary: Отправить запрос на генерацию тестовых данных (прикладной → транспорт)
+      operationId: sendMessage
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SendPayload'
+      responses:
+        '202':
+          description: Запрос принят, начата обработка
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SendAccepted'
+        '400':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /v1/messages/receive:
+    post:
+      tags: [messages]
+      summary: Получить следующее собранное сообщение для доставки в чат (long-poll / опрос)
+      description: |
+        На диаграмме последовательности (как в методичке) доставка может быть показана как **вызов от транспорта к прикладному** (push на URL WebSocket-сервера).
+        Контракт здесь задаёт эквивалентный вариант: **прикладной бэкенд опрашивает транспорт** этим методом — логика та же.
+      operationId: receiveMessage
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ReceiveQuery'
+      responses:
+        '200':
+          description: Собранное сообщение или пустая очередь
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ReceivePayload'
+        '400':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+components:
+  schemas:
+    Segment:
+      type: object
+      required:
+        - message_id
+        - sent_at
+        - total_segments
+        - segment_index
+        - payload_chunk
+      properties:
+        message_id:
+          type: string
+          format: uuid
+          description: Идентификатор сообщения (склеивается из сегментов)
+        sent_at:
+          type: string
+          format: date-time
+          description: Время отправки (как в методичке — может использоваться как id логического потока)
+        total_segments:
+          type: integer
+          minimum: 1
+          description: Общее число сегментов в сообщении
+        segment_index:
+          type: integer
+          minimum: 0
+          description: Номер сегмента, 0-based
+        payload_chunk:
+          type: string
+          description: Фрагмент UTF-8 текста (часть сгенерированных примеров JSON)
+
+    SendPayload:
+      type: object
+      required:
+        - sender
+        - sent_at
+        - json_schema
+        - sample_count
+      properties:
+        sender:
+          type: string
+          description: Имя пользователя из чата
+        sent_at:
+          type: string
+          format: date-time
+        json_schema:
+          type: object
+          additionalProperties: true
+          description: JSON Schema описывающая структуру данных для генерации примеров
+        sample_count:
+          type: integer
+          minimum: 1
+          maximum: 100
+          description: Сколько примеров объектов сгенерировать
+        constraints:
+          type: string
+          description: Дополнительные текстовые ограничения для LLM (опционально)
+
+    SendAccepted:
+      type: object
+      required:
+        - message_id
+      properties:
+        message_id:
+          type: string
+          format: uuid
+          description: Идентификатор для сопоставления с сегментами и ответом receive
+
+    ReceiveQuery:
+      type: object
+      properties:
+        sender:
+          type: string
+          description: Фильтр по пользователю (опционально)
+        wait_ms:
+          type: integer
+          minimum: 0
+          maximum: 30000
+          description: Длительность ожидания сборки (мс), опционально
+
+    ReceivePayload:
+      type: object
+      required:
+        - sender
+        - sent_at
+        - error
+        - payload
+      properties:
+        sender:
+          type: string
+        sent_at:
+          type: string
+          format: date-time
+        error:
+          type: boolean
+          description: true если не все сегменты собраны за отведённые циклы или критическая ошибка сборки
+        payload:
+          type: string
+          description: Склеенная полезная нагрузка (примеры JSON) или пустая строка при error
+
+    Error:
+      type: object
+      properties:
+        code:
+          type: string
+        message:
+          type: string

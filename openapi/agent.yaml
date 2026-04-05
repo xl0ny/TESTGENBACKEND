@@ -1,0 +1,120 @@
+openapi: 3.0.3
+info:
+  title: Агентный уровень — LLM вариант 8
+  description: |
+    Локальная LLM генерирует примеры заполнения по JSON Schema; ответ нарезается на сегменты по X байт
+    и отправляется на транспортный уровень (HTTP POST /v1/segments). Прикладной бэкенд инициирует задачу.
+  version: 1.0.0
+
+servers:
+  - url: http://localhost:8082
+    description: Локальная разработка (ноутбук с агентом)
+
+tags:
+  - name: generation
+    description: Генерация тестовых данных
+
+paths:
+  /v1/generation/tasks:
+    post:
+      tags: [generation]
+      summary: Поставить задачу генерации примеров по схеме
+      operationId: createGenerationTask
+      description: |
+        Агент вызывает LLM, нарезает вывод на сегменты и для каждого вызывает транспорт `POST /v1/segments`.
+        Поля тела согласованы с `SendPayload` транспортного уровня и вариантом LLM-8.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/GenerationTaskRequest'
+      responses:
+        '202':
+          description: Задача принята к исполнению
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GenerationTaskAccepted'
+        '400':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /health:
+    get:
+      summary: Проверка доступности агента
+      operationId: health
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: ok
+
+components:
+  schemas:
+    GenerationTaskRequest:
+      type: object
+      required:
+        - message_id
+        - sender
+        - sent_at
+        - json_schema
+        - sample_count
+      properties:
+        message_id:
+          type: string
+          format: uuid
+          description: Тот же идентификатор, что вернул транспорт на /v1/messages/send
+        sender:
+          type: string
+        sent_at:
+          type: string
+          format: date-time
+        json_schema:
+          type: object
+          additionalProperties: true
+          description: JSON Schema структуры данных для генерации примеров
+        sample_count:
+          type: integer
+          minimum: 1
+          maximum: 100
+        constraints:
+          type: string
+        transport_base_url:
+          type: string
+          format: uri
+          description: Базовый URL транспортного сервиса для POST /v1/segments (если не задан из конфига)
+        segment_max_bytes:
+          type: integer
+          minimum: 256
+          default: 4096
+          description: Максимальный размер сегмента в байтах (UTF-8), параметр X из ТЗ
+
+    GenerationTaskAccepted:
+      type: object
+      required:
+        - message_id
+        - status
+      properties:
+        message_id:
+          type: string
+          format: uuid
+        status:
+          type: string
+          enum: [accepted, running]
+
+    Error:
+      type: object
+      properties:
+        code:
+          type: string
+        message:
+          type: string
