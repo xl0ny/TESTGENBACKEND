@@ -11,11 +11,11 @@ type Segment struct {
 }
 
 type SendPayload struct {
-	Sender       string                 `json:"sender"`
-	SentAt       string                 `json:"sent_at"`
-	JSONSchema   map[string]interface{} `json:"json_schema"`
-	SampleCount  int                    `json:"sample_count"`
-	Constraints  string                 `json:"constraints,omitempty"`
+	Sender       string      `json:"sender"`
+	SentAt       string      `json:"sent_at"`
+	JSONSchema   interface{} `json:"json_schema"`
+	SampleCount  int         `json:"sample_count"`
+	Constraints  string      `json:"constraints,omitempty"`
 }
 
 type SendAccepted struct {
@@ -49,12 +49,12 @@ type OutboundMessage struct {
 }
 
 type GenerationTaskRequest struct {
-	MessageID        string                 `json:"message_id"`
-	Sender           string                 `json:"sender"`
-	SentAt           string                 `json:"sent_at"`
-	JSONSchema       map[string]interface{} `json:"json_schema"`
-	SampleCount      int                    `json:"sample_count"`
-	Constraints      string                 `json:"constraints,omitempty"`
-	TransportBaseURL string                 `json:"transport_base_url,omitempty"`
-	SegmentMaxBytes  int                    `json:"segment_max_bytes,omitempty"`
+	MessageID        string      `json:"message_id"`
+	Sender           string      `json:"sender"`
+	SentAt           string      `json:"sent_at"`
+	JSONSchema       interface{} `json:"json_schema"`
+	SampleCount      int         `json:"sample_count"`
+	Constraints      string      `json:"constraints,omitempty"`
+	TransportBaseURL string      `json:"transport_base_url,omitempty"`
+	SegmentMaxBytes  int         `json:"segment_max_bytes,omitempty"`
 }

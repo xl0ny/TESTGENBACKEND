@@ -28,7 +28,7 @@ type ReceiveResult struct {
 type GenerateRequest struct {
 	Sender      string
 	SentAt      string
-	JSONSchema  map[string]any
+	JSONSchema  interface{}
 	SampleCount int
 	Constraints string
 }

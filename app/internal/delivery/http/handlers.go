@@ -52,10 +52,10 @@ func (h *Handlers) DeleteSession(c *gin.Context) {
 
 func (h *Handlers) PostGenerate(c *gin.Context) {
 	var body struct {
-		Sender      string         `json:"sender"`
-		JSONSchema  map[string]any `json:"json_schema"`
-		SampleCount int            `json:"sample_count"`
-		Constraints string         `json:"constraints"`
+		Sender      string      `json:"sender"`
+		JSONSchema  interface{} `json:"json_schema"`
+		SampleCount int         `json:"sample_count"`
+		Constraints string      `json:"constraints"`
 	}
 	if err := c.ShouldBindJSON(&body); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"code": "validation", "message": "sender, json_schema, sample_count required"})

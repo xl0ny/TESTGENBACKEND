@@ -83,6 +83,8 @@ func (uc *GenerationUseCase) StartWSGeneration(ctx context.Context, username str
 	uc.hub.PushToUser(username, map[string]any{
 		"type":       "status",
 		"message_id": accepted.MessageID,
+		"sender":     username,
+		"sent_at":    sentAt,
 		"status":     "processing",
 	})
 

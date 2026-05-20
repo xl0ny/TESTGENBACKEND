@@ -82,7 +82,7 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 		switch msgType {
 		case "generate":
-			schema, _ := msg["json_schema"].(map[string]any)
+			schema := msg["json_schema"]
 			sampleCount := intFromAny(msg["sample_count"])
 			if schema == nil || sampleCount < 1 {
 				_ = conn.SendJSON(map[string]any{"type": "error", "message": "json_schema and sample_count required"})

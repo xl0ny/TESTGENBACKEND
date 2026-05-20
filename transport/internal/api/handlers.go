@@ -45,7 +45,7 @@ func (s *Server) postSegment(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusBadRequest, "invalid_json", err.Error())
 		return
 	}
-	if seg.MessageID == "" || seg.TotalSegments < 1 || seg.SegmentIndex < 0 || seg.PayloadChunk == "" {
+	if seg.MessageID == "" || seg.TotalSegments < 0 || seg.SegmentIndex < 0 || seg.PayloadChunk == "" {
 		writeError(w, http.StatusBadRequest, "validation", "missing required segment fields")
 		return
 	}
